@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/cavaliercoder/grab"
@@ -323,6 +324,10 @@ func (downloader Downloader) downloadAndExtractTGZFiles(urlTemplate, baseName st
 }
 
 func (downloader Downloader) copyK8STEW() error {
+	if runtime.GOOS == "darwin" {
+		return downloader.downloadK8STEW()
+	}
+
 	binaryName, error := os.Executable()
 
 	if error != nil {
@@ -357,6 +362,52 @@ func (downloader Downloader) copyK8STEW() error {
 
 	if error != nil {
 		return error
+	}
+
+	utils.LogFilename("Copied", targetFilename)
+
+	return targetFile.Sync()
+}
+
+func (downloader Downloader) downloadK8STEW() error {
+	url := "https://github.com/darxkies/k8s-tew/releases/download/2.3.4/k8s-tew"
+	temporaryFile := "/tmp/k8s-tew"
+
+	targetFilename := downloader.config.GetFullLocalAssetFilename(utils.BinaryK8sTew)
+
+	if _, err := os.Stat(targetFilename); err == nil {
+		return nil
+	}
+
+	// Download file
+	if err := downloader.downloadFile(url, temporaryFile); err != nil {
+		return errors.Wrapf(err, "could not download file '%s'", url)
+	}
+
+	// Make sure the file is deleted once done
+	defer func() {
+		_ = os.Remove(temporaryFile)
+	}()
+
+	sourceFile, err := os.Open(temporaryFile)
+	if err != nil {
+		return err
+	}
+
+	defer sourceFile.Close()
+
+	targetFile, err := os.OpenFile(targetFilename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+
+	if err != nil {
+		return err
+	}
+
+	defer targetFile.Close()
+
+	_, err = io.Copy(targetFile, sourceFile)
+
+	if err != nil {
+		return err
 	}
 
 	utils.LogFilename("Copied", targetFilename)

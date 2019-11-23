@@ -2,7 +2,9 @@ package generate
 
 import (
 	"fmt"
+	"os/exec"
 	"path"
+	"runtime"
 	"strings"
 
 	"github.com/darxkies/k8s-tew/config"
@@ -1107,6 +1109,17 @@ func (generator *Generator) generateWordpressSetup() error {
 
 func (generator *Generator) generateBashCompletion(binaryName, bashCompletionFilename string) error {
 	binary := generator.config.GetFullLocalAssetFilename(binaryName)
+
+	//If running on OSX (darwin), kubectl for example will not run. So we use the installed executable if it exists
+	if runtime.GOOS == "darwin" {
+		if _, err := exec.LookPath(binaryName); err != nil {
+			//Not every tool is easily installable on osx
+			//Bash completion is not critical, can ignore for now
+			return nil
+		}
+		binary = binaryName
+	}
+
 	bashCompletionFullFilename := generator.config.GetFullLocalAssetFilename(bashCompletionFilename)
 
 	command := fmt.Sprintf("%s completion bash > %s", binary, bashCompletionFullFilename)
