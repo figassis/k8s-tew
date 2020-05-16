@@ -57,6 +57,7 @@ data:
           fallthrough in-addr.arpa ip6.arpa
           ttl 30
         }
+        forward . 1.1.1.1
         prometheus :9153
         forward . /etc/resolv.conf
         cache 30
